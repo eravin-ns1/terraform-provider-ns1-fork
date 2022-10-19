@@ -104,19 +104,20 @@ func TestAccZone_primary_to_secondary_to_normal(t *testing.T) {
 	// sorted by IP please
 	expected := []*dns.ZoneSecondaryServer{
 		{
-			NetworkIDs: []int{},
+			NetworkIDs: []int{89},
 			IP:         "2.2.2.2",
 			Port:       53,
 			Notify:     false,
 		},
 		{
-			NetworkIDs: []int{},
+			NetworkIDs: []int{0},
 			IP:         "3.3.3.3",
 			Port:       5353,
 			Notify:     true,
 		},
 	}
 	expectedOtherPorts := []int{53, 5353}
+	expectedOtherNetworks := []int{89, 0}
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
@@ -155,7 +156,7 @@ func TestAccZone_primary_to_secondary_to_normal(t *testing.T) {
 					resource.TestCheckResourceAttr(
 						"ns1_zone.it", "additional_primaries.1", "3.3.3.3",
 					),
-					testAccCheckOtherPorts(&zone, expectedOtherPorts),
+					testAccCheckOtherPortsAndNetworks(&zone, expectedOtherPorts, expectedOtherNetworks),
 					testAccCheckZoneNotPrimary(&zone),
 					testAccCheckZoneDNSSEC(&zone, false),
 				),
@@ -184,19 +185,20 @@ func TestAccZone_secondary_to_primary_to_normal(t *testing.T) {
 	// sorted by IP please
 	expected := []*dns.ZoneSecondaryServer{
 		{
-			NetworkIDs: []int{},
+			NetworkIDs: []int{89},
 			IP:         "2.2.2.2",
 			Port:       53,
 			Notify:     false,
 		},
 		{
-			NetworkIDs: []int{},
+			NetworkIDs: []int{0},
 			IP:         "3.3.3.3",
 			Port:       5353,
 			Notify:     true,
 		},
 	}
 	expectedOtherPorts := []int{53, 5353}
+	expectedOtherNetworks := []int{89, 0}
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
@@ -212,7 +214,7 @@ func TestAccZone_secondary_to_primary_to_normal(t *testing.T) {
 					resource.TestCheckResourceAttr("ns1_zone.it", "primary_port", "54"),
 					resource.TestCheckResourceAttr("ns1_zone.it", "additional_primaries.0", "2.2.2.2"),
 					resource.TestCheckResourceAttr("ns1_zone.it", "additional_primaries.1", "3.3.3.3"),
-					testAccCheckOtherPorts(&zone, expectedOtherPorts),
+					testAccCheckOtherPortsAndNetworks(&zone, expectedOtherPorts, expectedOtherNetworks),
 					testAccCheckZoneNotPrimary(&zone),
 					testAccCheckZoneDNSSEC(&zone, false),
 				),
@@ -660,14 +662,22 @@ func testAccCheckZoneNxTTL(zone *dns.Zone, expected int) resource.TestCheckFunc 
 	}
 }
 
-func testAccCheckOtherPorts(zone *dns.Zone, expected []int) resource.TestCheckFunc {
+func testAccCheckOtherPortsAndNetworks(zone *dns.Zone, expectedPorts []int, expectedNetworks []int) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		if len(zone.Secondary.OtherPorts) != len(expected) {
-			return fmt.Errorf("other_ports: got: %d want %d", len(zone.Secondary.OtherPorts), len(expected))
+		if len(zone.Secondary.OtherPorts) != len(expectedPorts) {
+			return fmt.Errorf("other_ports len: got: %d want %d", len(zone.Secondary.OtherPorts), len(expectedPorts))
+		}
+		if len(zone.Secondary.OtherNetworks) != len(expectedNetworks) {
+			return fmt.Errorf("other_networks len: got: %d want %d", len(zone.Secondary.OtherNetworks), len(expectedNetworks))
 		}
 		for i, v := range zone.Secondary.OtherPorts {
-			if v != expected[i] {
-				return fmt.Errorf("other_ports[%d]: got: %d want %d", i, v, expected[i])
+			if v != expectedPorts[i] {
+				return fmt.Errorf("other_ports[%d]: got: %d want %d", i, v, expectedPorts[i])
+			}
+		}
+		for i, v := range zone.Secondary.OtherNetworks {
+			if v != expectedNetworks[i] {
+				return fmt.Errorf("other_networks[%d]: got: %d want %d", i, v, expectedNetworks[i])
 			}
 		}
 		return nil
@@ -785,6 +795,7 @@ func testAccZoneSecondary(zoneName string) string {
   primary_port = 54
   additional_primaries = ["2.2.2.2", "3.3.3.3"]
   additional_ports = [53, 5353]
+  additional_networks = [89, 0]
 }
 `, zoneName)
 }
@@ -794,6 +805,7 @@ func testAccZoneSecondaryTSIG(zoneName, tsigName string) string {
   zone    = "%s"
   primary = "1.1.1.1"
   # primary_port left unspecified to test default/computed case
+  # no additional primaries/ports/networks
   tsig = {
     enabled = true
     name = "%s"

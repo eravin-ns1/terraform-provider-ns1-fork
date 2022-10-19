@@ -88,6 +88,14 @@ func resourceZone() *schema.Resource {
 				},
 				ConflictsWith: []string{"secondaries"},
 			},
+			"additional_networks": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeInt,
+				},
+				ConflictsWith: []string{"secondaries"},
+			},
 			"dns_servers": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -189,6 +197,7 @@ func resourceZoneToResourceData(d *schema.ResourceData, z *dns.Zone) error {
 		d.Set("primary_port", z.Secondary.PrimaryPort)
 		d.Set("additional_primaries", z.Secondary.OtherIPs)
 		d.Set("additional_ports", z.Secondary.OtherPorts)
+		d.Set("additional_networks", z.Secondary.OtherNetworks)
 		if z.Secondary.TSIG != nil && z.Secondary.TSIG.Enabled {
 			d.Set("tsig", tsigToMap(z.Secondary.TSIG))
 		}
@@ -287,7 +296,13 @@ func resourceDataToZone(z *dns.Zone, d *schema.ResourceData) {
 			z.Secondary.OtherPorts[i] = otherPort.(int)
 		}
 	}
-	// TODO: support OtherNetworks after ns1-go supports it
+	if v, ok := d.GetOk("additional_networks"); ok {
+		otherNetworksRaw := v.([]interface{})
+		z.Secondary.OtherNetworks = make([]int, len(otherNetworksRaw))
+		for i, otherNetwork := range otherNetworksRaw {
+			z.Secondary.OtherNetworks[i] = otherNetwork.(int)
+		}
+	}
 	if v, ok := d.GetOk("secondaries"); ok {
 		secondariesSet := v.(*schema.Set)
 		secondaries := make([]dns.ZoneSecondaryServer, secondariesSet.Len())

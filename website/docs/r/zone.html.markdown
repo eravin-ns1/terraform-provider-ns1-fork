@@ -83,8 +83,15 @@ The following arguments are supported:
 * `link` - (Optional) The target zone(domain name) to link to.
 * `primary` - (Optional) The primary zones' IPv4 address. This makes the zone a
   secondary. Conflicts with `secondaries`.
-* `additional_primaries` - (Optional) List of additional IPv4 addresses for the primary
-  zone. Conflicts with `secondaries`.
+* `primary_port` - (Optional) The port number to use for the `primary_port` server if it is not listening on port 53.
+Conflicts with `secondaries`.
+* `additional_primaries` - (Optional) List of additional IPv4 addresses for the primary zone.
+Conflicts with `secondaries`.
+* `additional_ports` - (Optional) Corresponding list of port numbers to use for
+the servers in `additional_primaries` if any of them are not using port 53.
+Conflicts with `secondaries`.
+* `additional_networks` - (Optional) Corresponding list of network IDs of the servers in `additional_primaries`.
+Conflicts with `secondaries`.
 * `ttl` - (Optional/Computed) The SOA TTL.
 * `refresh` - (Optional/Computed) The SOA Refresh. Conflicts with `primary` and
   `additional_primaries` (default must be accepted).
