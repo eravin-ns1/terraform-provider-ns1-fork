@@ -106,6 +106,18 @@ func TestAccMonitoringJob_updated(t *testing.T) {
 					testAccCheckMonitoringConnectTimeout(&mj, 2000),
 				),
 			},
+			{
+				Config: testAccMonitoringJobNoRules,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckMonitoringJobExists("ns1_monitoringjob.it", &mj),
+					testAccCheckMonitoringJobName(&mj, "terraform test"),
+					testAccCheckMonitoringJobActive(&mj, true),
+					testAccCheckMonitoringJobRegions(&mj, []string{"lhr", "nrt"}),
+					testAccCheckMonitoringJobType(&mj, "tcp"),
+					testAccCheckMonitoringJobFrequency(&mj, 120),
+					testAccCheckMonitoringJobEmptyRules(&mj),
+				),
+			},
 		},
 	})
 }
@@ -347,6 +359,17 @@ func testAccCheckMonitoringJobRuleKey(mj *monitor.Job, expected string) resource
 		return nil
 	}
 }
+
+func testAccCheckMonitoringJobEmptyRules(mj *monitor.Job) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		ruleCount := len(mj.Rules)
+		if ruleCount != 0 {
+			return fmt.Errorf("delete rules failed: got %d rule(s), wanted 0 rules", ruleCount)
+		}
+		return nil
+	}
+}
+
 func testAccCheckMonitoringJobMute(mj *monitor.Job, expected bool) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		if mj.Mute != expected {
@@ -455,5 +478,31 @@ resource "ns1_monitoringjob" "it" {
     comparison = "<="
     key = "connect"
   }
+}
+`
+
+const testAccMonitoringJobNoRules = `
+resource "ns1_monitoringjob" "it" {
+  job_type = "tcp"
+  name     = "terraform test"
+
+  active        = true
+  regions       = ["lhr", "nrt"]
+  frequency     = 120
+  rapid_recheck = true
+  policy        = "all"
+  mute      = false
+
+  config = {
+    ssl = "1",
+    send = "HEAD  /  HTTP/1.0\\r\\n\\r\\n"
+    port = 443
+    host = "1.1.1.1"
+    connect_timeout = "2000"
+    response_timeout = "1000"
+    tls_add_verify = false
+    ipv6 = false
+  }
+  # rules deleted [via omission]
 }
 `
